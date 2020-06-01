@@ -38,7 +38,7 @@ etest_gene <- SelectGene_R(expr, k = 50)
 etest_gene
 etest_gene
 ```
-### SciBetR: Single Cell Identifier Based on Entropy Test
+### scibetR: Single Cell Identifier Based on Entropy Test
 1. For reference set, rows should be cells, column should be genes and the last column should be "label" (TPM). 2. For query set, rows should be cells and column should be genes (TPM).
 example:
 ```
