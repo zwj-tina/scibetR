@@ -52,5 +52,5 @@ tibble(
 train_set <- expr[ID,]      #construct reference set
 test_set <- expr[-ID,]      #construct query set
 
-prd <- SciBet(train_set, test_set[,-ncol(test_set)])
+prd <- SciBet_R(train_set, test_set[,-ncol(test_set)])
 ```
