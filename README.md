@@ -3,7 +3,7 @@ Pure R version of **scibet**, a portable and fast single cell type identifier
 
 ## Installation Guide
 
-**Installing SciBet**  
+**Installing scibetR**  
 To install scibetR, run:
 ```
 if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
