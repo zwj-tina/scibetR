@@ -1,16 +1,8 @@
 # scibetR
-A portable and fast single cell type identifier
+Pure R version of **scibet**, a portable and fast single cell type identifier
 
 ## Installation Guide
-**Installing dependency package**  
-Before installing SciBet, the dependency packages should be installed first:
-```
-install.packages("Rcpp")
-install.packages("RcppEigen")
-install.packages("ggsci")
-install.packages("viridis")
-install.packages("tidyverse")
-```
+
 **Installing SciBet**  
 To install scibetR, run:
 ```
