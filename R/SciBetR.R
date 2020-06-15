@@ -25,20 +25,42 @@ SelectGene_R <- function(expr, k = 1000) {
   out <- rownames(select)
   return(out)
 }
-#' @param expr Rows should be cells and the last column should be "label".
-#' @param geneset  selected gene
-#'  @param k  selected gene number
-#' @return  'prob'  scibet matrix Rows are genes and the columns are genes(class matrix)
+#' @name Gambler_R
+#' @param test_r Rows should be cells and columns should be genes.
+#' @param prob_r  trained scibet model  Rows should be genes and columns should be cell types.The genes must be matched with test_r
+#' @param ret_tab   return list or matrix
+#' @return  'cellType'  or matrix
+Gambler_R <- function(test_r, prob_r,ret_tab=FALSE){
+  total <- as.matrix(test_r) %*% as.matrix(prob_r)
+  cellType <- c()
+  for(i in 1:nrow(total)){
+    index <- which.max(total[i,])
+    cellType <- c(cellType,colnames(total)[index])
+  }
+  out <- total/rowSums(total)
+  if(ret_tab){
+    return(out)
+  }
+  return(cellType)
+}
+#' Train SciBet model and generate a "Bet" function for cell type prediction.
+#' @name Learn_R
+#' @usage Learn_R(expr, geneset, k=1000, a=5)
+#' @param expr The reference expression dataframeThe expression dataframe, with rows being cells, and columns being genes. The last column should be "label".
+#' @param geneset A user-defined set of genes for prediction.
+#' @param k See [SelectGene()] for details.
+#' @return A function that takes two inputs: `test` and `result`. See [Bet()] for details.
+#' @export
 Learn_R <- function(expr,geneset=NULL,k=1000){
   labels <- factor(expr$label)
   if(is.null(geneset)){
     geneset <- SelectGene_R(expr,k)
   }
-  labels_set <- levels(labels)
+  labell <- levels(labels)
   expr_select <- expr[,geneset]
   #average
   label_total <- matrix(0,length(geneset),1)
-  for(i in labels_set){
+  for(i in labell){
     label_TPM <- expr_select[labels==i,]
     label_mean <- colSums(log2(label_TPM+1))
     a <- matrix(label_mean,,1)
@@ -51,24 +73,204 @@ Learn_R <- function(expr,geneset=NULL,k=1000){
   label_t <- t(label_total)
   prob <- log2(label_t+1)-log2(rowSums(label_t)+length(geneset))
   prob <- t(prob)
+  genes <- rownames(prob)
+  function(test, result="list"){
+    have_genes <- intersect(genes,colnames(test))
+    testa <- log1p(as.matrix(test[,have_genes])) / log(2)
+    switch(result,
+           list = Gambler_R(testa, prob[have_genes, ], FALSE),
+           table = {
+             out <- Gambler_R(testa, prob[have_genes, ],TRUE)
+             rownames(out) <- have_genes
+        return(out)
+      }
+    )
+  }
+}
+
+#' Classify cells of a given query dataset using a reference dataset.
+#' @description SciBet main function. Train SciBet with the reference dataset to assign cell types for the query dataset.
+#' @name SciBet_R
+#' @usage SciBet_R(train, test, k=1000, result=c("list", "table"))
+#' @param train The reference dataset, with rows being cells, and columns being genes. The last column should be "label".
+#' @param test The query dataset. Rows should be cells and columns should be genes.
+#' @param k Number of genes to select according to the total entropy differneces among cell types.
+#' @examples SciBet_R(train.matr, query.matr)
+#' @export
+SciBet_R <- function(train, test, k=1000, result="list"){
+  Learn_R(train, NULL, k)(test, result)
+}
+
+#' Compute expression entropy.
+#' @name Entropy
+#' @usage Entropy(expr, window=120, low = 2000)
+#' @param expr The expression dataframe. Rows should be cells and columns should be genes.
+#' @param window The window size for expression value discretization.
+#' @param low The lower limit for normalizing expression entropy
+#' @return A dataframe..
+#' @export
+
+Entropy_R <- function(expr, window=120, low = 2000){
+  expr <- as.data.frame(expr)
+
+  ent_res <- tibble(
+    gene = colnames(expr),
+    mean.expr = colMeans(expr)
+  ) %>%
+    dplyr::filter(mean.expr < 6000)
+
+  expr <- expr[,ent_res$gene]
+  #
+  #out <- GenEntr(expr, window, n_threads)
+  #
+  n_cell <- nrow(expr)
+  n_gene <- ncol(expr)
+  entropy <- vector(mode="numeric",length=n_gene)
+  for(i in 1:n_gene){
+    states <- ceiling(1000000/window)
+    discretize <- vector(mode="numeric", length=states)
+    for(j in 1:n_cell){
+      discretize[ceiling(expr[j,i]/window)+1] <- discretize[ceiling(expr[j,i]/window)+1]+1
+    }
+    sumAll <- sum(discretize)
+    for(j in 1:states){
+      if(discretize[j]){
+        entropy[i] <- entropy[i] - discretize[j]/sumAll * log(discretize[j]/sumAll)
+      }
+    }
+  }
+  #
+  ent_res %>%
+    dplyr::mutate(entropy = entropy) %>%
+    dplyr::mutate(fit = 0.18*log(0.03*mean.expr + 1)) -> ent_res
+
+  ent_res %>%
+    dplyr::filter(mean.expr > low) %>%
+    dplyr::mutate(k = entropy/fit) %>%    #linear normalization of expression entropy
+    dplyr::pull(k) %>%
+    quantile(0.75) %>%
+    as.numeric() -> k
+
+  ent_res <- ent_res %>% dplyr::mutate(norm_ent = entropy/k)
+
+  return(ent_res)
+}
+
+#' Calculating the nulltest.
+#' @name NullTest_R
+#' @usage NullTest_R(ref, query, null_expr, labels,gene_num = 500)
+#' @param ref The reference dataset. Rows should be cells, columns should be genes.
+#' @param query The query dataset. Rows should be cells and columns should be genes.The genes are intersection of ref , null and query.
+#' @param labels The reference dataset's labels of each cell.
+#' @param gene_num The number of common markers of reference set used for false positive control.
+#' @return A vector of null test.
+#' @export
+NullTest_R <- function(ref,query,null_expr,labels,gene_num){
+   n_ref <- nrow(ref)
+   n_query <- nrow(query)
+   n_gene <- ncol(ref)
+   labell <- levels(labels)
+   n_label <- length(labell)
+   label_total <- matrix(0,ncol(ref),1)
+   for(i in labell){
+     label_TPM <- ref[labels==i,]
+     label_mean <- colMeans(label_TPM)
+     a <- matrix(label_mean,,1)
+     colnames(a) <- i
+     label_total <- cbind(label_total,a)
+   }
+   label_total <- label_total[,-1]
+   rownames(label_total)<- colnames(ref)
+   e1 <- c()
+   ds <- c()
+   for(i in colnames(ref)){
+      e1[i] = sum(label_total[i,])/n_label
+      ds[i] = log(e1[i]+1)-log(null_expr[i]+1)
+   }
+   sum_e1 <- sum(e1)
+   sum_null <- sum(null_expr)
+   for(i in colnames(ref)){
+     e1[i] <- log((e1[i]+1)/(sum_e1+n_gene))-log((null_expr[i]+1)/(sum_null+n_gene))
+   }
+   dss <- sort(ds,decreasing = TRUE)
+   prob <- vector(mode = "numeric",length = n_query)
+   gene_num <- 500
+   for(j in 1:n_query){
+     for(i in 1:gene_num){
+       prob[j] <- prob[j]+e1[names(dss)[i]]*query[j,which(names(e1)==names(dss)[i])]
+     }
+   }
+   return(prob)
+}
+#' Calculating the confidence score C for false positive control.
+#' @name conf_score_R
+#' @usage conf_score(ref, query, null_expr, gene_num = 500)
+#' @param ref The reference dataset. Rows should be cells, columns should be genes and last column should be "label".
+#' @param query The query dataset. Rows should be cells and columns should be genes.
+#' @param gene_num The number of common markers of reference set used for false positive control.
+#' @return A vector of confidence scores.
+#' @export
+conf_score_R <- function(ref, query, null_expr, gene_num){
+  labels <- factor(ref$label)
+  genes <- Reduce(intersect, list(colnames(ref), colnames(query), names(null_expr)))
+  labels_in <- as.integer(labels) - 1
+  ref <- log1p(as.matrix(ref[, genes])) / log(2)
+  query <- log1p(as.matrix(query[, genes])) / log(2)
+  a <- NullTest_R(ref, query, null_expr[genes], labels, gene_num)
+  b <- NullTest_R(ref, ref, null_expr[genes], labels, gene_num)
+  prob <- a/max(b)
+  prob[prob > 1] <- 1
   return(prob)
 }
-#' @param train Rows should be cells and the last column should be "label".
-#' @param test Rows should be cells and columns should be genes.
-#'  @return  'cellType' the predicted cell types (class character)
-SciBet_R <- function(train,test,k=1000){
-  scibet_train <- Learn_R(train,NULL,k)
-  genes_train <- rownames(scibet_train)
-  genes_test <- colnames(test)
-  gene_index <- intersect(genes_train,genes_test)
-  test_matrix <- log2(test[,gene_index] + 1)
-  train_matrix <- scibet_train[gene_index,]
-  total <- as.matrix(test_matrix) %*% as.matrix(train_matrix)
-  cellType <- c()
-  for(i in 1:nrow(total)){
-    index <- which.max(total[i,])
-    cellType <- c(cellType,colnames(total)[index])
+
+#' Make predictions with the trained SciBet model.
+#' @name Bet_R
+#' @usage Bet(expr, result=c("list", "table"))
+#' @param expr The expression matrix or dataframe for prediction. Rows should be cells and columns should be genes.
+#' @param result Return a "list" of predicted labels, or a "table" of probabilities of each tested cell belonging to each label.
+#' @return A vector or a dataframe for the classification result.
+#' @export
+Bet_R <- function(expr, result="list"){
+}
+
+#' Export model as matrix.
+#' @details If you don't plan to export the models for usage on other platforms, simply saving the Bet function in a RData file would also work in R.
+#' @name ExportModel_R
+#' @usage ExportModel(Bet)
+#' @param Bet A prediction function generated by SciBet.
+#' @return A matrix.
+#' @export
+ExportModel_R <- function(Bet_R){
+  prob <- environment(Bet_R)$prob
+  rownames(prob) <- environment(Bet_R)$genes
+  colnames(prob) <- environment(Bet_R)$labell
+  return(prob)
+}
+#' Generate Bet function from a model matrix.
+#' @name LoadModel_R
+#' @usage LoadModel(x, genes, labels)
+#' @param x A SciBet model in the format of a matrix.
+#' @param genes (Optional).
+#' @param labels (Optional).
+#' @return A Bet function.
+#' @export
+LoadModel_R <- function(x, genes=NULL, labels=NULL){
+  prob <- x
+  if (is.null(genes))
+    genes <- rownames(x)
+  if (is.null(labels))
+    labels <- colnames(x)
+  function(expr, result="list"){
+    have_genes <- intersect(genes,colnames(expr))
+    expra <- log1p(as.matrix(expr[,have_genes])) / log(2)
+    switch(result,
+           list = Gambler_R(expra, prob[have_genes,],FALSE),
+           table = {
+             out <- Gambler_R(expra, prob[have_genes, ], TRUE)
+             rownames(out) <- have_genes
+             return(out)
+           }
+    )
   }
-  return(cellType)
 }
 

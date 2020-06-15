@@ -15,7 +15,7 @@ Learn_R(expr, geneset, k=1000)
 
 }
 \value{
-A training matrix.
+return A function that takes two inputs: `test` and `result`. See [Bet()] for details.
 }
 \description{
 Train SciBet model and generate a training matrix for cell type prediction.

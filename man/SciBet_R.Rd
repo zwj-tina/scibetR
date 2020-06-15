@@ -4,7 +4,7 @@
 \alias{SciBet_R}
 \title{Classify cells of a given query dataset using a reference dataset.}
 \usage{
-SciBet_R(train, test, k=1000)
+SciBet_R(train, test, k=1000,result="list")
 }
 \arguments{
 \item{train}{The reference dataset, with rows being cells, and columns being genes. The last column should be "label".}
@@ -12,6 +12,11 @@ SciBet_R(train, test, k=1000)
 \item{test}{The query dataset. Rows should be cells and columns should be genes.}
 
 \item{k}{Number of genes to select according to the total entropy differneces among cell types.}
+
+\item{result}{Return "table" or "list".}
+}
+\value{
+return the predicted cell types.
 }
 \description{
 SciBet main function. Train SciBet with the reference dataset to assign cell types for the query dataset.
