@@ -129,9 +129,10 @@ Entropy_R <- function(expr, window=120, low = 2000){
   for(i in 1:n_gene){
     states <- ceiling(1000000/window)
     discretize <- vector(mode="numeric", length=states)
-    for(j in 1:n_cell){
-      discretize[ceiling(expr[j,i]/window)+1] <- discretize[ceiling(expr[j,i]/window)+1]+1
-    }
+    #for(j in 1:n_cell){
+      #discretize[ceiling(expr[j,i]/window)+1] <- discretize[ceiling(expr[j,i]/window)+1]+1
+    #}
+    discretize[ceiling(expr[,i]/window)+1] <- discretize[ceiling(expr[,i]/window)+1]+1
     sumAll <- sum(discretize)
     for(j in 1:states){
       if(discretize[j]){
