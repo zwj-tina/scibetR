@@ -1,6 +1,6 @@
 # scibetR
-Pure R version of **scibet**, a portable and fast single cell type identifier
-
+Pure R version of **scibet**, a portable and fast single cell type identifier.
+It takes longer than the original functions in **scibet**.
 ## Installation Guide
 
 **Installing scibetR**  
@@ -93,4 +93,15 @@ return
  9 AAR2      49.3    0.952 0.163    0.188 
 10 AARS      39.6    0.922 0.141    0.182 
 # … with 11,506 more rows
+```
+
+### LoadModel
+x, A SciBet model in the format of a matrix.
+```
+y <- LoadModel_R(x,genes=NULL,labels=Null)
+```
+return a function as
+```
+Bet_R <- function(expr, result="list"){
+}
 ```
