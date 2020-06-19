@@ -102,8 +102,8 @@ SciBet_R <- function(train, test, k=1000, result="list"){
 }
 
 #' Compute expression entropy.
-#' @name Entropy
-#' @usage Entropy(expr, window=120, low = 2000)
+#' @name Entropy_R
+#' @usage Entropy_R(expr, window=120, low = 2000)
 #' @param expr The expression dataframe. Rows should be cells and columns should be genes.
 #' @param window The window size for expression value discretization.
 #' @param low The lower limit for normalizing expression entropy
