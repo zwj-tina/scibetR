@@ -125,24 +125,23 @@ Entropy_R <- function(expr, window=120, low = 2000){
   #
   n_cell <- nrow(expr)
   n_gene <- ncol(expr)
-  entropy <- vector(mode="numeric",length=n_gene)
+  out <- c()
   for(i in 1:n_gene){
-    states <- ceiling(1000000/window)
+    states <- ceiling(1000000.0/window)
     discretize <- vector(mode="numeric", length=states)
-    #for(j in 1:n_cell){
-      #discretize[ceiling(expr[j,i]/window)+1] <- discretize[ceiling(expr[j,i]/window)+1]+1
-    #}
-    discretize[ceiling(expr[,i]/window)+1] <- discretize[ceiling(expr[,i]/window)+1]+1
-    sumAll <- sum(discretize)
-    for(j in 1:states){
-      if(discretize[j]){
-        entropy[i] <- entropy[i] - discretize[j]/sumAll * log(discretize[j]/sumAll)
-      }
+    li <- ceiling(expr[,i]/window)+1
+    number <- table(li)
+    for(j in names(number)){
+      a <- number[j]
+      discretize[as.numeric(j)] <- a
     }
+    sumAll <- sum(discretize)
+    discretizeN <- discretize[discretize!=0]
+    out <- c(out,-sum(discretizeN/sumAll * log(discretizeN/sumAll)))
   }
-  #
+
   ent_res %>%
-    dplyr::mutate(entropy = entropy) %>%
+    dplyr::mutate(entropy = out) %>%
     dplyr::mutate(fit = 0.18*log(0.03*mean.expr + 1)) -> ent_res
 
   ent_res %>%
@@ -184,22 +183,15 @@ NullTest_R <- function(ref,query,null_expr,labels,gene_num){
    rownames(label_total)<- colnames(ref)
    e1 <- c()
    ds <- c()
-   for(i in colnames(ref)){
-      e1[i] = sum(label_total[i,])/n_label
-      ds[i] = log(e1[i]+1)-log(null_expr[i]+1)
-   }
+   e1 =  rowSums(label_total)/n_label
+   ds = log(e1+1)-log(null_expr+1)
    sum_e1 <- sum(e1)
    sum_null <- sum(null_expr)
-   for(i in colnames(ref)){
-     e1[i] <- log((e1[i]+1)/(sum_e1+n_gene))-log((null_expr[i]+1)/(sum_null+n_gene))
-   }
+   e1 <- log((e1+1)/(sum_e1+n_gene))-log((null_expr+1)/(sum_null+n_gene))
    dss <- sort(ds,decreasing = TRUE)
    prob <- vector(mode = "numeric",length = n_query)
-   gene_num <- 500
    for(j in 1:n_query){
-     for(i in 1:gene_num){
-       prob[j] <- prob[j]+e1[names(dss)[i]]*query[j,which(names(e1)==names(dss)[i])]
-     }
+       prob[j] <- sum(e1[names(dss)[1:gene_num]]*query[j,names(dss)[1:gene_num]])
    }
    return(prob)
 }
@@ -214,7 +206,6 @@ NullTest_R <- function(ref,query,null_expr,labels,gene_num){
 conf_score_R <- function(ref, query, null_expr, gene_num){
   labels <- factor(ref$label)
   genes <- Reduce(intersect, list(colnames(ref), colnames(query), names(null_expr)))
-  labels_in <- as.integer(labels) - 1
   ref <- log1p(as.matrix(ref[, genes])) / log(2)
   query <- log1p(as.matrix(query[, genes])) / log(2)
   a <- NullTest_R(ref, query, null_expr[genes], labels, gene_num)
