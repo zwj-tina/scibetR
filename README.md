@@ -69,4 +69,28 @@ query <- query[,-ncol(query)]
 c_score <- conf_score_R(ref = reference, query = query, null_expr = null, gene_num = 500)
 ```
 
-
+### Entropy calculation
+ Compute expression entropy.
+ expr,The expression dataframe. Rows should be cells and columns should be genes.
+ window, The window size for expression value discretization.
+ low The lower limit for normalizing expression entropy
+```
+ent_res <- Entropy_R(expr,window=120,low=2000)
+```
+return
+```
+# A tibble: 11,516 x 5
+   gene  mean.expr entropy    fit norm_ent
+   <chr>     <dbl>   <dbl>  <dbl>    <dbl>
+ 1 A2M       63.2    1.26  0.191    0.248 
+ 2 AAAS      73.9    1.03  0.210    0.204 
+ 3 AACS       8.73   0.412 0.0419   0.0813
+ 4 AAED1     37.8    0.631 0.136    0.124 
+ 5 AAGAB     65.7    1.18  0.196    0.233 
+ 6 AAK1      13.8    0.683 0.0622   0.135 
+ 7 AAMDC     13.1    0.414 0.0596   0.0817
+ 8 AAMP     159.     1.63  0.316    0.322 
+ 9 AAR2      49.3    0.952 0.163    0.188 
+10 AARS      39.6    0.922 0.141    0.182 
+# … with 11,506 more rows
+```
