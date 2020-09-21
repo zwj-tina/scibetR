@@ -293,8 +293,8 @@ Marker_heatmap <- function(expr, gene){
   colnames(type_mean_expr) <- colnames(expr)[-ncol(expr)]
 
   sub_expr <- type_mean_expr
-  sub_expr <- sub_expr
-    as_tibble() %>%
+  sub_expr <- sub_expr %>%
+    as.tibble() %>%
     dplyr::mutate_all(funs((. - mean(.))/sd(.))) %>%
     t()
   colnames(sub_expr) <- type_expr$label
@@ -312,8 +312,8 @@ Marker_heatmap <- function(expr, gene){
     tidyr::gather(key = 'cell_type', value = 'zscore', -group, -gene) %>%
     dplyr::arrange(group, desc(zscore))
   sub_expr %>%
-    ggplot(aes(factor(gene, levels = unique(gene)),
-               factor(cell_type, levels = sort(unique(cell_type), decreasing = T)))) +
+    ggplot(aes(factor(gene, levels = unique(sub_expr$gene)),
+               factor(cell_type, levels = sort(unique(sub_expr$cell_type), decreasing = T)))) +
     geom_point(aes(size = zscore, colour = zscore)) +
     theme(
       strip.text.x = element_blank(),
