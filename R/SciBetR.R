@@ -266,3 +266,116 @@ LoadModel_R <- function(x, genes=NULL, labels=NULL){
   }
 }
 
+#' Expression patterns of informative genes across cell types.
+#' @name Marker_heatmap
+#' @usage Marker_heatmap(expr, gene)
+#' @param expr The expression dataframe. Rows should be cells, columns should be genes and last column should be "label".
+#' @param gene A vector of informative genes.
+#' @return A figure.
+#' @export
+Marker_heatmap <- function(expr, gene){
+  expr <- expr[,c(gene,'label')]
+  type_expr <- expr %>%
+    tidyr::nest(-label) %>%
+    dplyr::rename(expr = data) %>%
+    dplyr::mutate(colmeans = purrr::map(
+      .x = expr,
+      .f = function(.x){colMeans(.x)}))
+
+  type_expr$colmeans %>%
+    as.data.frame() %>%
+    tibble::remove_rownames() %>%
+    t() %>%
+    as.data.frame() %>%
+    tibble::remove_rownames() -> type_mean_expr
+
+  rownames(type_mean_expr) <- type_expr$label
+  colnames(type_mean_expr) <- colnames(expr)[-ncol(expr)]
+
+  sub_expr <- type_mean_expr
+  sub_expr <- sub_expr
+    as_tibble() %>%
+    dplyr::mutate_all(funs((. - mean(.))/sd(.))) %>%
+    t()
+  colnames(sub_expr) <- type_expr$label
+  get_label <- function(num){
+    v <- sub_expr[num,]
+    colnames(sub_expr)[which(v == max(v))]
+  }
+  sub_expr <- sub_expr %>%
+    tibble::as.tibble() %>%
+    dplyr::mutate(group = purrr::map_chr(1:length(gene), get_label))
+  sub_expr <- as.data.frame(sub_expr)
+  rownames(sub_expr) <- gene
+  sub_expr <- sub_expr %>%
+    dplyr::mutate(gene = gene) %>%
+    tidyr::gather(key = 'cell_type', value = 'zscore', -group, -gene) %>%
+    dplyr::arrange(group, desc(zscore))
+  sub_expr %>%
+    ggplot(aes(factor(gene, levels = unique(gene)),
+               factor(cell_type, levels = sort(unique(cell_type), decreasing = T)))) +
+    geom_point(aes(size = zscore, colour = zscore)) +
+    theme(
+      strip.text.x = element_blank(),
+      axis.title = element_text(size = 15),
+      axis.text = element_text(size = 13),
+      legend.title = element_text(size = 13),
+      legend.text = element_text(size = 13),
+      axis.text.y = element_text(color="black"),
+      axis.text.x = element_text(color="black", angle = -90, hjust = 0),
+      panel.background = element_rect(colour = "black", fill = "white"),
+      panel.grid = element_line(colour = "grey", linetype = "dashed"),
+      panel.grid.major = element_line(
+        colour = "grey",
+        linetype = "dashed",
+        size = 0.2
+      )
+    ) +
+    facet_grid(. ~ group, scales = "free", space = "free") +
+    scale_colour_distiller(palette = "RdYlBu") +
+    labs(
+      x = '',
+      y = ''
+    ) -> p
+
+  return(p)
+}
+
+#' Heatmap of classification result.
+#' @name Confusion_heatmap
+#' @usage Confusion_heatmap(ori, prd)
+#' @param ori A vector of the original labels for each cell in the test set.
+#' @param prd A vector of the predicted labels for each cell in the test set.
+#' @return A heatmap for the confusion matrix of the classification result.
+#' @export
+Confusion_heatmap <- function(ori, prd){
+  tibble(
+    ori = ori,
+    prd = prd
+  ) %>%
+    dplyr::count(ori, prd) %>%
+    tidyr::spread(key = prd, value = n) -> cross.validation.filt
+
+  cross.validation.filt[is.na(cross.validation.filt)] = 0
+  cross.validation.filt[,-1] <- round(cross.validation.filt[,-1]/rowSums(cross.validation.filt[,-1]),2)
+  cross.validation.filt <- cross.validation.filt %>%
+    tidyr::gather(key = 'prd', value = 'Prob', -ori)
+
+  cross.validation.filt %>%
+    ggplot(aes(ori,prd,fill = Prob)) +
+    geom_tile() +
+    theme(axis.title = element_text(size = 0)) +
+    theme(axis.text = element_text(size = 10)) +
+    theme(legend.title = element_text(size = 0)) +
+    theme(legend.text = element_text(size = 10)) +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.ticks = element_blank(),
+          axis.title = element_blank()) +
+    theme(axis.text.y = element_text(color="black"),
+          axis.text.x = element_text(color="black",angle = 45, hjust = 1)) +
+    scale_fill_viridis() -> p
+
+  return(p)
+}
