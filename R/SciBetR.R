@@ -51,6 +51,7 @@ Gambler_R <- function(test_r, prob_r,ret_tab=FALSE){
 #' @param k See [SelectGene()] for details.
 #' @return A function that takes two inputs: `test` and `result`. See [Bet()] for details.
 #' @export
+
 Learn_R <- function(expr,geneset=NULL,k=1000){
   labels <- factor(expr$label)
   if(is.null(geneset)){
@@ -83,11 +84,10 @@ Learn_R <- function(expr,geneset=NULL,k=1000){
              out <- Gambler_R(testa, prob[have_genes, ],TRUE)
              rownames(out) <- have_genes
         return(out)
-      }
-    )
+        }
+      )
+    }
   }
-}
-
 #' Classify cells of a given query dataset using a reference dataset.
 #' @description SciBet main function. Train SciBet with the reference dataset to assign cell types for the query dataset.
 #' @name SciBet_R
@@ -266,6 +266,21 @@ LoadModel_R <- function(x, genes=NULL, labels=NULL){
   }
 }
 
+
+#' Process scibet.core
+#' @name pro.core
+#' @usage pro.core(scibet.core)
+#' @param scibet.core A SciBet core
+#' @return A processed SciBet core
+#' @export
+pro.core <- function(scibet.core){
+  cell.type <- unname(unlist(scibet.core[,1]))
+  scibet.core <- as.data.frame(t(scibet.core[,-1]))
+  colnames(scibet.core) <- cell.type
+  return(as.matrix(scibet.core))
+}
+
+
 #' Expression patterns of informative genes across cell types.
 #' @name Marker_heatmap
 #' @usage Marker_heatmap(expr, gene)
@@ -293,8 +308,8 @@ Marker_heatmap <- function(expr, gene){
   colnames(type_mean_expr) <- colnames(expr)[-ncol(expr)]
 
   sub_expr <- type_mean_expr
-  sub_expr <- sub_expr %>%
-    as.tibble() %>%
+  sub_expr <- sub_expr
+    as_tibble() %>%
     dplyr::mutate_all(funs((. - mean(.))/sd(.))) %>%
     t()
   colnames(sub_expr) <- type_expr$label
@@ -312,8 +327,8 @@ Marker_heatmap <- function(expr, gene){
     tidyr::gather(key = 'cell_type', value = 'zscore', -group, -gene) %>%
     dplyr::arrange(group, desc(zscore))
   sub_expr %>%
-    ggplot(aes(factor(gene, levels = unique(sub_expr$gene)),
-               factor(cell_type, levels = sort(unique(sub_expr$cell_type), decreasing = T)))) +
+    ggplot(aes(factor(gene, levels = unique(gene)),
+               factor(cell_type, levels = sort(unique(cell_type), decreasing = T)))) +
     geom_point(aes(size = zscore, colour = zscore)) +
     theme(
       strip.text.x = element_blank(),
@@ -379,3 +394,40 @@ Confusion_heatmap <- function(ori, prd){
 
   return(p)
 }
+
+
+#' Heatmap for the confusion matrix of the classification with the false postive control.
+#' @name Confusion_heatmap_negctrl
+#' @usage Confusion_heatmap_negctrl(res, cutoff = 0.4)
+#' @param res Classification result.
+#' @param cutoff The cutoff of confifence score C.
+#' @return A heatmap for the confusion matrix of the classification result with the false postive control.
+#' @export
+Confusion_heatmap_negctrl <- function(res, cutoff = 0.4){
+  res %>%
+    dplyr::mutate(prd = ifelse(c_score < cutoff, 'unassigned', prd)) %>%
+    dplyr::count(ori, prd) %>%
+    tidyr::spread(key = prd, value = n) -> cla.res
+
+  cla.res[is.na(cla.res)] = 0
+  cla.res[,-1] <- round(cla.res[,-1]/rowSums(cla.res[,-1]),2)
+  cla.res <- cla.res %>% tidyr::gather(key = 'prd', value = 'Prob', -ori)
+  label <- cla.res$ori %>% unique()
+  cla.res %>%
+    ggplot(aes(prd, factor(ori, levels = c(label[-3],'Neg.cell')), fill = Prob)) +
+    geom_tile(colour = 'white', lwd = 0.5) +
+    theme(axis.title = element_text(size = 12)) +
+    theme(axis.text = element_text(size = 12)) +
+    theme(legend.title = element_text(size = 0)) +
+    theme(legend.text = element_text(size = 12)) +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.ticks = element_blank(),
+          axis.title = element_blank()) +
+    theme(axis.text.y = element_text(color="black"),
+          axis.text.x = element_text(color="black", angle = 50, hjust = 1)) +
+    scale_fill_material('blue')
+}
+
+

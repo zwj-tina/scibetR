@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1591797420061.000,
+    "dirty" : true,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "F5334CF7",
+    "lastKnownWriteTime" : 1591954695,
+    "last_content_update" : 1591956450862,
+    "path" : "~/raid1/scibetR/R/SciBetR.R",
+    "project_path" : "R/SciBetR.R",
+    "properties" : {
+        "cursorPosition" : "158,14",
+        "scrollLine" : "149"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
