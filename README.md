@@ -22,7 +22,8 @@ library(ggsci)
 ### Load the data
 For expression matrix (TPM), rows should be cells and the last column should be "label".
 ```
-expr <- 
+path_da <- "~/test.rds.gz"
+expr <- readr::read_rds(path = path_da) 
 ```
 ### E(ntropy)-test for supervised gene selection
 ```
