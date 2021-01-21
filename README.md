@@ -20,7 +20,7 @@ library(viridis)
 library(ggsci)
 ```
 ### Load the data
-For expression matrix (TPM), rows should be cells and the last column should be "label".
+For expression matrix (TPM), rows should be cells and columns should be genes but the last column should be "label" for each cell.
 ```
 path_da <- "~/test.rds.gz"
 expr <- readr::read_rds(path = path_da) 
