@@ -97,7 +97,7 @@ return
 ```
 
 ### LoadModel
-x, A SciBet model in the format of a matrix as the trained reference, rows are genes and columns are labels.
+x, A SciBet model in the format of a matrix as the trained reference.To facilitate matrix multiplication in the process, its rows are genes and columns are labels.
 ```
 y <- LoadModel_R(x,genes=NULL,labels=Null)
 ```
