@@ -37,8 +37,8 @@ Gambler_R <- function(test_r, prob_r,ret_tab=FALSE){
     index <- which.max(total[i,])
     cellType <- c(cellType,colnames(total)[index])
   }
-  mm <- np.exp2(total-np.max(total))
-  out <- mm/np.sum(mm)
+  mm <- 2 ^ (total-max(total))
+  out <- mm/ sum(mm)
   if(ret_tab){
     return(out)
   }
