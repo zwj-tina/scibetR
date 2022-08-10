@@ -29,7 +29,6 @@ expr <- readr::read_rds(path = path_da)
 ```
 etest_gene <- SelectGene_R(expr, k = 50)
 etest_gene
-etest_gene
 ```
 ### scibetR: Single Cell Identifier Based on Entropy Test
 1. For reference set, rows should be cells, column should be genes and the last column should be "label" (TPM).
