@@ -105,3 +105,5 @@ return a function as
 Bet_R <- function(expr, result="list"){
 }
 ```
+### correction
+add %>% in line 312 in Marker_heatmap() function
