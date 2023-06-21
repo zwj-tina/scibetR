@@ -309,7 +309,7 @@ Marker_heatmap <- function(expr, gene){
   colnames(type_mean_expr) <- colnames(expr)[-ncol(expr)]
 
   sub_expr <- type_mean_expr
-  sub_expr <- sub_expr
+  sub_expr <- sub_expr %>%
     as_tibble() %>%
     dplyr::mutate_all(funs((. - mean(.))/sd(.))) %>%
     t()
